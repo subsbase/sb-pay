@@ -70,12 +70,11 @@
       >
         <h2>Name On Card</h2>
 
-        <input type="text" class="cc-name" data-sb="nameOnCard" />
+        <input type="text" data-sb="nameOnCard" />
 
         <h2>Card Number</h2>
         <input
           type="text"
-          class="cc-number"
           data-sb="pan"
           pattern="\d*"
           x-autocompletetype="cc-number"
@@ -85,7 +84,6 @@
         <h2>Expiry formatting</h2>
         <input
           type="text"
-          class="cc-exp"
           data-sb="expiry"
           pattern="\d*"
           x-autocompletetype="cc-exp"
@@ -97,7 +95,6 @@
         <h2>CVC formatting</h2>
         <input
           type="text"
-          class="cc-cvc"
           data-sb="cvv"
           pattern="\d*"
           x-autocompletetype="cc-csc"
@@ -113,9 +110,9 @@
     </div>
     <script>
       var J = SbPay.J,
-        number = document.querySelector(".cc-number"),
-        exp = document.querySelector(".cc-exp"),
-        cvc = document.querySelector(".cc-cvc"),
+        number = document.querySelector("[data-sb=pan]"),
+        exp = document.querySelector("[data-sb=expiry]"),
+        cvc = document.querySelector("[data-sb=cvv]"),
         validation = document.querySelector(".validation");
 
       var form = document.getElementById("form");
@@ -151,7 +148,7 @@
           J.addClass(validation, "failed");
         } else {
           J.addClass(validation, "passed");
-          SbPay.submit({
+          SbPay.init({
             publishableKey: "abcdefghijklmnop",
             form,
             callback: (response) => {

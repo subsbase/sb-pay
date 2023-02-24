@@ -134,7 +134,6 @@ var payment = /******/ (function (modules) {
     /***/ function (module, exports, __webpack_require__) {
       var Payment,
         QJ,
-        tokenise,
         cardFromNumber,
         cardFromType,
         cards,
@@ -320,76 +319,6 @@ var payment = /******/ (function (modules) {
           }
         }
         return foundCard && foundCard[0];
-      };
-      tokenise = function (url, request, callback) {
-        // url = "https://secure-egypt.paytabs.com/" + url.replace(/^\/+/g, "");
-        if ("XDomainRequest" in window && window.XDomainRequest !== null) {
-          var xdr = new XDomainRequest();
-          xdr.open("POST", url);
-          xdr.onload = function () {
-            try {
-              var resp = JSON.parse(xdr.responseText ? xdr.responseText : "{}");
-              callback(resp);
-            } catch (e) {
-              console.log(e);
-            }
-          };
-          xdr.onerror = function () {
-            console.log(e);
-          };
-          xdr.onprogress = function () {};
-          xdr.ontimeout = function () {
-            callback({
-              status: 408,
-              errorText: "Request timeout, please try again",
-            });
-          };
-          setTimeout(function () {
-            xdr.send(request);
-          }, 500);
-          return;
-        }
-        var xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState == 4) {
-            if (this.status === 200) {
-              var resp;
-              try {
-                resp = JSON.parse(xhr.responseText ? xhr.responseText : "{}");
-                callback(resp);
-                if (resp == null) {
-                  resp = {
-                    status: xhr.status,
-                    error: true,
-                    errorText: xhr.statusText,
-                  };
-                }
-                callback(resp);
-              } catch (e) {
-                console.log("Failed to load response");
-              }
-            } else {
-              // check for expired session
-              if (this.status === 500) {
-                location.href = "/payment/expired";
-              } else {
-                const response = JSON.parse(xhr.response);
-                if (response.error && response.status === 500) {
-                  location.href = "/payment/expired";
-                  return;
-                }
-                callback(response);
-              }
-            }
-          }
-        };
-        xhr.open("POST", url, true);
-        xhr.setRequestHeader("Content-type", "application/json");
-        xhr.send(request);
-      };
-
-      doCallback = function (callback) {
-        callback();
       };
 
       cardFromType = function (type) {
@@ -898,20 +827,107 @@ var payment = /******/ (function (modules) {
         };
 
         Payment.tokenise = function (url, request, callback) {
-          return tokenise(url, request, callback);
+          // url = "https://secure-egypt.paytabs.com/" + url.replace(/^\/+/g, "");
+          if ("XDomainRequest" in window && window.XDomainRequest !== null) {
+            var xdr = new XDomainRequest();
+            xdr.open("POST", url);
+            xdr.onload = function () {
+              try {
+                var resp = JSON.parse(
+                  xdr.responseText ? xdr.responseText : "{}"
+                );
+                callback(resp);
+              } catch (e) {
+                console.log(e);
+              }
+            };
+            xdr.onerror = function () {
+              console.log(e);
+            };
+            xdr.onprogress = function () {};
+            xdr.ontimeout = function () {
+              callback({
+                status: 408,
+                errorText: "Request timeout, please try again",
+              });
+            };
+            setTimeout(function () {
+              xdr.send(request);
+            }, 500);
+            return;
+          }
+          var xhr = new XMLHttpRequest();
+          xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4) {
+              if (this.status === 200) {
+                var resp;
+                try {
+                  resp = JSON.parse(xhr.responseText ? xhr.responseText : "{}");
+                  callback(resp);
+                  if (resp == null) {
+                    resp = {
+                      status: xhr.status,
+                      error: true,
+                      errorText: xhr.statusText,
+                    };
+                  }
+                  callback(resp);
+                } catch (e) {
+                  console.log("Failed to load response");
+                }
+              } else {
+                // check for expired session
+                if (this.status === 500) {
+                  location.href = "/payment/expired";
+                } else {
+                  const response = JSON.parse(xhr.response);
+                  if (response.error && response.status === 500) {
+                    location.href = "/payment/expired";
+                    return;
+                  }
+                  callback(response);
+                }
+              }
+            }
+          };
+          xhr.open("POST", url, true);
+          xhr.setRequestHeader("Content-type", "application/json");
+          xhr.send(request);
         };
 
-        Payment.submit = function (number, exp, cvc, name, callback) {
+        Payment.processForm = function (form) {
+          var formFields = {};
+          for (i = 0, len = form.length; i < len; i++) {
+            var field = form[i].getAttribute("data-sb");
+            if (typeof field === "string") {
+              if (field === "expiry") {
+                var expiry = Payment.fns.cardExpiryVal(J.val(form[i]));
+                formFields.expiryYear = expiry.year;
+                formFields.expiryMonth = expiry.month;
+              } else {
+                formFields[field] = J.val(form[i]);
+              }
+            }
+          }
+          return formFields;
+        };
+
+        Payment.init = function (options) {
+          if (!options) {
+            console.error("Missing required options");
+            return false;
+          }
+          if (typeof options.publishableKey !== "string") {
+            console.error("Publishable key must be provided");
+            return false;
+          }
+
+          var formFields = Payment.processForm(options.form);
+
           token = Payment.tokenise(
             "https://webhook.site/46a662cd-dae9-4228-9446-a829331762ed",
-            JSON.stringify({
-              pan: number.value,
-              nameOnCard: name.value,
-              expiryYear: exp.value.split("/")[1].trim(),
-              expiryMonth: exp.value.split("/")[0].trim(),
-              cvv: cvc.value,
-            }),
-            callback
+            JSON.stringify(formFields),
+            options.callback
           );
         };
 
