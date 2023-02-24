@@ -997,7 +997,7 @@ var payment = /******/ (function (modules) {
 
       module.exports = Payment;
 
-      globalThis.Payment = Payment;
+      globalThis.SbPay = Payment;
 
       /***/
     },
