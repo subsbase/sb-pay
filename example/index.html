@@ -4,12 +4,10 @@
     <script src="../dist/payment.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type="text/css" media="screen">
-      /* .input_group {
-        display: flex;
-      }
-      .card-logo {
+      /* .card-logo {
         background-size: 56px 36px;
         width: 44px;
+        height: 36px;
       }
       .visa {
         background-size: 56px 36px;
@@ -71,16 +69,18 @@
         <h2>Name On Card</h2>
 
         <input type="text" data-sb="nameOnCard" />
-
-        <h2>Card Number</h2>
-        <input
-          type="text"
-          data-sb="pan"
-          pattern="\d*"
-          x-autocompletetype="cc-number"
-          placeholder="Card number"
-          required
-        />
+        <div class="card-input-group">
+          <h2>Card Number</h2>
+          <input
+            type="text"
+            data-sb="pan"
+            pattern="\d*"
+            x-autocompletetype="cc-number"
+            placeholder="Card number"
+            required
+          />
+          <div class="card-logo visa"></div>
+        </div>
         <h2>Expiry formatting</h2>
         <input
           type="text"
@@ -109,54 +109,30 @@
       </form>
     </div>
     <script>
-      var J = SbPay.J,
+      var J = sbTokenize.J,
         number = document.querySelector("[data-sb=pan]"),
         exp = document.querySelector("[data-sb=expiry]"),
         cvc = document.querySelector("[data-sb=cvv]"),
-        validation = document.querySelector(".validation");
+        validation = document.querySelector(".validation"),
+        form = document.getElementById("form");
 
-      var form = document.getElementById("form");
-
-      SbPay.formatCardNumber(number, 16);
-      SbPay.formatCardExpiry(exp);
-      SbPay.formatCardCVC(cvc);
-      document.querySelector("form").onsubmit = function (e) {
-        e.preventDefault();
-        J.toggleClass(document.querySelectorAll("input"), "invalid");
-        J.removeClass(validation, "passed failed");
-
-        var cardType = SbPay.fns.cardType(J.val(number));
-
-        J.toggleClass(
-          number,
-          "invalid",
-          !SbPay.fns.validateCardNumber(J.val(number))
-        );
-        J.toggleClass(
-          exp,
-          "invalid",
-          !SbPay.fns.validateCardExpiry(SbPay.cardExpiryVal(exp))
-        );
-
-        J.toggleClass(
-          cvc,
-          "invalid",
-          !SbPay.fns.validateCardCVC(J.val(cvc), cardType)
-        );
-
-        if (document.querySelectorAll(".invalid").length) {
-          J.addClass(validation, "failed");
-        } else {
-          J.addClass(validation, "passed");
-          SbPay.init({
-            publishableKey: "abcdefghijklmnop",
-            form,
-            callback: (response) => {
-              console.log(response);
-            },
-          });
-        }
-      };
+      sbTokenize.init({
+        publishableKey: "abcdefghijklmnop",
+        number,
+        exp,
+        cvc,
+        validation,
+        form,
+        onCardTypeChange: function (cardType) {
+          console.log("card type changed", cardType);
+        },
+        beforeSubmit: function () {
+          console.log("Before Submit>>");
+        },
+        callback: (response) => {
+          console.log(response);
+        },
+      });
     </script>
   </body>
 </html>
