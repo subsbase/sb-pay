@@ -68,7 +68,7 @@
       >
         <h2>Name On Card</h2>
 
-        <input type="text" data-sb="nameOnCard" />
+        <input type="text" data-sb="nameOnCard" name="nameOnCard" />
         <div class="card-input-group">
           <h2>Card Number</h2>
           <input
@@ -118,13 +118,14 @@
         validation = document.querySelector(".validation"),
         form = document.getElementById("form");
 
-      sbTokenize({
+      SbTokenize({
         publishableKey: "abcdefghijklmnop",
         number,
         exp,
         cvc,
         validation,
         form,
+        submitForm: false,
         onCardUpdate: function (cardType) {
           console.log("card type changed", cardType);
         },

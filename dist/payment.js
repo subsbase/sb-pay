@@ -921,7 +921,7 @@ var payment = /******/ (function (modules) {
           options.cvc.value = cvvm;
         };
 
-        Payment.init = function (sbTokenize) {
+        Payment.init = function (SbTokenize) {
           return function (options) {
             if (!options) {
               console.error("Missing required options");
@@ -939,72 +939,70 @@ var payment = /******/ (function (modules) {
               validation = options.validation,
               exp = options.exp,
               form = options.form;
-            sbTokenize.onCardUpdate = function (cardType) {
+            SbTokenize.onCardUpdate = function (cardType) {
               return options.onCardUpdate(cardType);
             };
-            sbTokenize.beforeSubmit = function () {
+            SbTokenize.beforeSubmit = function () {
               return options.beforeSubmit();
             };
-            sbTokenize.formatCardNumber(number, 16);
-            sbTokenize.formatCardExpiry(exp);
-            sbTokenize.formatCardCVC(cvc);
+            SbTokenize.formatCardNumber(number, 16);
+            SbTokenize.formatCardExpiry(exp);
+            SbTokenize.formatCardCVC(cvc);
             form.onsubmit = function (e) {
               try {
                 e.preventDefault();
                 QJ.toggleClass(document.querySelectorAll("input"), "invalid");
                 QJ.removeClass(validation, "passed failed");
-                var cardType = sbTokenize.fns.cardType(QJ.val(number));
+                var cardType = SbTokenize.fns.cardType(QJ.val(number));
 
                 QJ.toggleClass(
                   number,
                   "invalid",
-                  !sbTokenize.fns.validateCardNumber(QJ.val(number))
+                  !SbTokenize.fns.validateCardNumber(QJ.val(number))
                 );
                 QJ.toggleClass(
                   exp,
                   "invalid",
-                  !sbTokenize.fns.validateCardExpiry(
-                    sbTokenize.cardExpiryVal(exp)
+                  !SbTokenize.fns.validateCardExpiry(
+                    SbTokenize.cardExpiryVal(exp)
                   )
                 );
 
                 QJ.toggleClass(
                   cvc,
                   "invalid",
-                  !sbTokenize.fns.validateCardCVC(QJ.val(cvc), cardType)
+                  !SbTokenize.fns.validateCardCVC(QJ.val(cvc), cardType)
                 );
 
                 if (document.querySelectorAll(".invalid").length) {
                   QJ.addClass(validation, "failed");
                 } else {
                   QJ.addClass(validation, "passed");
-                  var formFields = sbTokenize.processForm(form);
-                  sbTokenize.maskForm(options);
-                  sbTokenize.beforeSubmit();
+                  var formFields = SbTokenize.processForm(form);
+                  SbTokenize.maskForm(options);
+                  SbTokenize.beforeSubmit();
                   number.removeAttribute("name");
                   cvc.removeAttribute("name");
                   exp.removeAttribute("name");
-                  sbTokenize
-                    .tokenize(
-                      "https://webhook.site/46a662cd-dae9-4228-9446-a829331762ed",
-                      JSON.stringify(formFields)
-                    )
-                    .then((token) => {
-                      try {
-                        var tokenInput = document.createElement("input");
-                        tokenInput.setAttribute("type", "hidden");
-                        tokenInput.setAttribute("name", "token");
-                        tokenInput.setAttribute("value", token);
-                        form.appendChild(tokenInput);
-                        if (options.submitForm) {
-                          form.submit();
-                        } else {
-                          options.callback(token);
-                        }
-                      } catch (e) {
-                        console.error(e);
+                  SbTokenize.tokenize(
+                    "https://webhook.site/46a662cd-dae9-4228-9446-a829331762ed",
+                    JSON.stringify(formFields)
+                  ).then((token) => {
+                    try {
+                      var tokenInput = document.createElement("input");
+                      tokenInput.setAttribute("type", "hidden");
+                      tokenInput.setAttribute("name", "token");
+                      tokenInput.setAttribute("value", token);
+                      form.appendChild(tokenInput);
+                      if (options.submitForm) {
+                        form.submit();
+                      } else {
+                        options.callback(token);
                       }
-                    });
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  });
                 }
               } catch (e) {
                 console.error(e);
@@ -1095,7 +1093,7 @@ var payment = /******/ (function (modules) {
 
       module.exports = Payment;
 
-      globalThis.sbTokenize = Payment.init(Payment);
+      globalThis.SbTokenize = Payment.init(Payment);
 
       /***/
     },
