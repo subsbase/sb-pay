@@ -73,6 +73,7 @@
           <h2>Card Number</h2>
           <input
             type="text"
+            name="pan"
             data-sb="pan"
             pattern="\d*"
             x-autocompletetype="cc-number"
@@ -84,6 +85,7 @@
         <h2>Expiry formatting</h2>
         <input
           type="text"
+          name="expiry"
           data-sb="expiry"
           pattern="\d*"
           x-autocompletetype="cc-exp"
@@ -95,6 +97,7 @@
         <h2>CVC formatting</h2>
         <input
           type="text"
+          name="cvv"
           data-sb="cvv"
           pattern="\d*"
           x-autocompletetype="cc-csc"
@@ -109,28 +112,27 @@
       </form>
     </div>
     <script>
-      var J = sbTokenize.J,
-        number = document.querySelector("[data-sb=pan]"),
+      var number = document.querySelector("[data-sb=pan]"),
         exp = document.querySelector("[data-sb=expiry]"),
         cvc = document.querySelector("[data-sb=cvv]"),
         validation = document.querySelector(".validation"),
         form = document.getElementById("form");
 
-      sbTokenize.init({
+      sbTokenize({
         publishableKey: "abcdefghijklmnop",
         number,
         exp,
         cvc,
         validation,
         form,
-        onCardTypeChange: function (cardType) {
+        onCardUpdate: function (cardType) {
           console.log("card type changed", cardType);
         },
         beforeSubmit: function () {
           console.log("Before Submit>>");
         },
         callback: (response) => {
-          console.log(response);
+          console.log("This is the response", response);
         },
       });
     </script>
